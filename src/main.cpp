@@ -27,7 +27,7 @@ uint8_t macAddr[6];
 uint8_t wifi_channel = 1;
 uint32_t packetSize = 0;
 uint32_t packetCounter = 0;
-uint32_t attackTime = 0;
+uint32_t lastTime = 0;
 uint32_t packetRateTime = 0;
 
 // beacon frame definition
@@ -86,15 +86,10 @@ void nextChannel()
 {
   if (sizeof(channels) > 1)
   {
-    uint8_t ch = channels[channelIndex++];
+    wifi_channel = channels[channelIndex++];
     if (channelIndex > sizeof(channels))
       channelIndex = 0;
-
-    if (ch != wifi_channel && ch >= 1 && ch <= 14)
-    {
-      wifi_channel = ch;
       wifi_set_channel(wifi_channel);
-    }
   }
 }
 
@@ -138,10 +133,10 @@ void setup()
 void loop()
 {
   auto currentTime = millis();
-  if (currentTime - attackTime < 100)
+  if (currentTime - lastTime < 100)
     return;
 
-  attackTime = currentTime;
+  lastTime = currentTime;
 
   // go to next channel
   nextChannel();
@@ -149,7 +144,8 @@ void loop()
   auto ssidNum = 0;
   while (ssidNum < sizeof(ssids) / sizeof(ssids[0]))
   {
-    auto ssid = (String(ssidNum) + " " + ssids[ssidNum] + "                                ").substring(0, 32);
+    const char* emptySsid = "                                ";
+    auto ssid = (String(ssidNum) + " " + ssids[ssidNum] + emptySsid).substring(0, 32);
 
     // set MAC address
     macAddr[5] = ssidNum++;
@@ -158,8 +154,6 @@ void loop()
     memcpy(&beaconPacket[10], macAddr, 6);
     memcpy(&beaconPacket[16], macAddr, 6);
 
-    // reset SSID
-    //memcpy(&beaconPacket[38], emptySSID, 32);
     // write new SSID into beacon frame
     memcpy_P(&beaconPacket[38], ssid.c_str(), 32);
 
